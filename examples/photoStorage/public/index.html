@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>แอพเก็บภาพ</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        background: #f2f4f8;
+        color: #1a1a1a;
+      }
+
+      main {
+        width: min(960px, 92vw);
+        padding: 32px 0 64px;
+      }
+
+      header {
+        margin-bottom: 24px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+      }
+
+      .card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+      }
+
+      .uploader {
+        display: grid;
+        gap: 16px;
+        align-items: center;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .uploader input[type="text"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+      }
+
+      .uploader input[type="file"] {
+        padding: 8px 0;
+      }
+
+      .uploader button {
+        padding: 12px 16px;
+        border: none;
+        border-radius: 10px;
+        background: #4f46e5;
+        color: #fff;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .uploader button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .status {
+        margin-top: 12px;
+        font-size: 0.95rem;
+      }
+
+      .status-note {
+        margin: 12px 0 0;
+        font-size: 0.9rem;
+        color: #64748b;
+      }
+
+      .gallery {
+        margin-top: 28px;
+        display: grid;
+        gap: 18px;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      }
+
+      .photo-card {
+        border-radius: 14px;
+        overflow: hidden;
+        background: #0f172a;
+        color: #fff;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .photo-card img {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+      }
+
+      .photo-card span {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        background: rgba(15, 23, 42, 0.9);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background: #0b1120;
+          color: #e2e8f0;
+        }
+
+        .card {
+          background: #111827;
+          box-shadow: 0 16px 30px rgba(2, 6, 23, 0.5);
+        }
+
+        .uploader input[type="text"] {
+          background: #0f172a;
+          border-color: #1f2937;
+          color: #e2e8f0;
+        }
+
+        .status-note {
+          color: #94a3b8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>แอพเก็บภาพ</h1>
+        <p>อัปโหลดภาพเพื่อจัดเก็บบนเครื่องและดูในแกลเลอรี</p>
+      </header>
+
+      <section class="card">
+        <div class="uploader">
+          <label>
+            ตั้งชื่อภาพ
+            <input id="photoName" type="text" placeholder="เช่น ทริปเชียงใหม่" />
+          </label>
+          <label>
+            เลือกไฟล์ภาพ
+            <input id="photoFile" type="file" accept="image/*" />
+          </label>
+          <button id="uploadBtn" type="button">บันทึกภาพ</button>
+        </div>
+        <p class="status-note">ขั้นตอน: ใส่ชื่อ (ถ้ามี) เลือกไฟล์ แล้วกด “บันทึกภาพ” เพื่อเก็บลงเครื่อง</p>
+        <div class="status" id="status"></div>
+      </section>
+
+      <section>
+        <h2>แกลเลอรีล่าสุด</h2>
+        <div class="gallery" id="gallery"></div>
+      </section>
+    </main>
+
+    <script>
+      const uploadBtn = document.getElementById('uploadBtn');
+      const photoFile = document.getElementById('photoFile');
+      const photoName = document.getElementById('photoName');
+      const statusEl = document.getElementById('status');
+      const galleryEl = document.getElementById('gallery');
+
+      const setStatus = (message, isError = false) => {
+        statusEl.textContent = message;
+        statusEl.style.color = isError ? '#dc2626' : '#16a34a';
+      };
+
+      const loadGallery = async () => {
+        const response = await fetch('/api/photos');
+        const data = await response.json();
+        galleryEl.innerHTML = '';
+        data.photos.forEach((photo) => {
+          const card = document.createElement('div');
+          card.className = 'photo-card';
+          const image = document.createElement('img');
+          image.src = photo.url;
+          image.alt = photo.name;
+          const caption = document.createElement('span');
+          caption.textContent = photo.name;
+          card.append(image, caption);
+          galleryEl.appendChild(card);
+        });
+      };
+
+      const fileToDataUrl = (file) =>
+        new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('อ่านไฟล์ไม่สำเร็จ'));
+          reader.readAsDataURL(file);
+        });
+
+      uploadBtn.addEventListener('click', async () => {
+        const file = photoFile.files[0];
+        if (!file) {
+          setStatus('กรุณาเลือกไฟล์ภาพ', true);
+          return;
+        }
+        uploadBtn.disabled = true;
+        setStatus('กำลังอัปโหลด...');
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          const response = await fetch('/api/photos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              filename: photoName.value.trim() || file.name,
+              dataUrl,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'อัปโหลดไม่สำเร็จ');
+          }
+
+          setStatus('บันทึกภาพเรียบร้อยแล้ว');
+          photoFile.value = '';
+          photoName.value = '';
+          await loadGallery();
+        } catch (error) {
+          setStatus(error.message, true);
+        } finally {
+          uploadBtn.disabled = false;
+        }
+      });
+
+      loadGallery().catch(() => {
+        setStatus('ไม่สามารถโหลดแกลเลอรีได้', true);
+      });
+    </script>
+  </body>
+</html>
