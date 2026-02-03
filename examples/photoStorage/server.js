@@ -92,6 +92,10 @@ const server = http.createServer(async (req, res) => {
     return serveStaticFile(res, path.join(PUBLIC_DIR, 'index.html'));
   }
 
+  if (req.method === 'GET' && (url.pathname === '/about' || url.pathname === '/about.html')) {
+    return serveStaticFile(res, path.join(PUBLIC_DIR, 'about.html'));
+  }
+
   if (req.method === 'GET' && url.pathname.startsWith('/photos/')) {
     const requested = path.basename(url.pathname);
     const filePath = path.join(UPLOAD_DIR, requested);
